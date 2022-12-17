@@ -7,13 +7,13 @@ sg.theme('Black')
 done = False
 textFont = ('Georgia', 20)
 childsName = None
-numHours = None
 childList = []
 tourMessage = ""
-url = '' #INSERT DISCORD WEBHOOK HERE
+url = '' #needs to be filled in with a discord webhook to send the message or it will end in an error
 
-#Basic layout of the screen when the program runs
-layout = [[sg.Button('New Signin'), sg.Button('Tour'), sg.Button('Close')]]
+#creates the layout for the main window
+#starts out as just buttons
+layout = [[sg.Button('New Signin'), sg.Button('Tour'), sg.Button('Close'), sg.Cancel()]]
 mainWindow = sg.Window("Times", layout, font=textFont)
 
 while(not done):
@@ -21,7 +21,7 @@ while(not done):
     if(event == 'New Signin'):
         #creates a new window where the user can log the students time
         signinWin = [[sg.Text("Type the kids name: "), sg.InputText()], 
-                    [sg.Text("Type in the number of hours: "), sg.InputText()], 
+                    [sg.Text("Number of hours: "), sg.Checkbox('1'), sg.Checkbox('1.5'), sg.Checkbox('2')], 
                     [sg.Ok(), sg.Cancel()]]
         signinWindow = sg.Window("Sign In", signinWin, font=textFont)
 
@@ -31,51 +31,72 @@ while(not done):
         event, values = signinWindow.read()
         if(event == 'Cancel'):
             signinWindow.close()
+
         if(event == 'Ok'):
             childsName = values[0]
             childList.append(childsName)
-            numHours = values[1]
             timeStruct = time.localtime()
             hour = timeStruct[3]
             minutes = timeStruct[4]
             
-            #this just calculates the time when the student is going to leave
+            #this calculates the time when the student is going to leave
             #and start on the next section of the class
-            if(minutes < 10):
-                minutes = "0" + str(minutes)
-            if(int(minutes) + 40 > 60):
-                typingMins = minutes + 40 - 60
-                typingHour = hour + 1
-                if(typingMins < 10):
-                    typingMins = "0" + str(typingMins)
+            for val in values:
+                if(values[val] is True):
+                    if(val is 1):
+                        outTime = str(hour + 1) + ":" + str(minutes)
+                    elif(val is 2):
+                        if(minutes + 30 > 60):
+                            outTime = str(hour + 2) + ":" + str(minutes - 30)
+                    elif(val is 3):
+                        outTime = str(hour + 2) + ":" + str(minutes)
+            
+            if(minutes + 40 > 60):
+                typingTime = str(hour + 1) + ":" + str(minutes - 20)
             else:
-                typingHour = hour
-                typingMins = int(minutes) + 40
-
-            signinWindow.close()
-
+                typingTime = str(hour) + ":" + str(minutes + 40)
+            
             #creates another log in the main window
+            signinWindow.close()
             newTimer = [sg.Text(childsName), sg.Text("Time In: " + str(hour) + ":" +  str(minutes)), 
-                        sg.Text("Typing Time: " + str(typingHour) + ":" + str(typingMins)), 
-                        sg.Text("Time Out: " + str(int(hour) + int(numHours)) +  ":" + str(minutes)), 
-                        sg.Text("Notes: "), sg.InputText()]#, sg.Checkbox('Typing?'), sg.Checkbox('Stem?')]
+                        sg.Text("Typing Time: " + typingTime), 
+                        sg.Text("Time Out: " + outTime), 
+                        sg.Text("Notes: "), sg.InputText()]
     
             mainWindow.extend_layout(mainWindow, [newTimer])
             mainWindow.refresh()
-        
+    
+    #different signin window for if a student is being shown the class for the first time
     if(event == 'Tour'):
-        tourLayout = [[sg.Text("Type in the kids name: "), sg.InputText()], [sg.Text("Evaluation: "), sg.InputText()],
-                    [sg.Ok(), sg.Cancel()]]
+        tourLayout = [[sg.Text("Type in the kids name: "), sg.InputText()], [sg.Text("Computer Literacy: "), 
+                        sg.Checkbox('Great', default=False), sg.Checkbox('Ok', default=False), sg.Checkbox('Needs Work', default=False)], 
+                        [sg.Text("Typing Speed: "), sg.InputText()], [sg.Text("Misc: "),sg.InputText()], [sg.Ok(), sg.Cancel()]]
+
         tourWin = sg.Window("Tour Evaluation", tourLayout, font=textFont)
         event, values = tourWin.read()
+
         if(event == "Ok"):
-            mainWindow.extend_layout(mainWindow, [[sg.Text("TOUR: " + values[0] + " Evaluation: " + values[1])]])
+            lit = "Computer Literacy: "
+            speed = "Typing Speed: "
+            misc = "Notes: "
+            mainWindow.extend_layout(mainWindow, [[sg.Text("TOUR: " + values[0])]])
             mainWindow.refresh()
-            tourMessage += values[0] + ": " + "Evaluation: " + values[1] + "\n"
+            count = 0
+            for val in values:
+                if(values[val] is True):
+                    if(val is 1):
+                        lit += "great"
+                    elif(val is 2):
+                        lit += "Ok"
+                    elif(val is 3):
+                        lit += "Needs Work"
+                    break
+            tourMessage += values[0] + ":\n" + lit + '\n' + speed + values[4] + '\n' + misc + values[5]
             tourWin.close()
+
         if(event == "Cancel"):
             tourWin.close()
-    
+
     #when the main window is closed it compiles everything from the main window
     #including the date, the students name and any notes about the student
     #this also helps to keep track of what a student has done in past weeks
@@ -97,5 +118,11 @@ while(not done):
             #is empty
             webhook = DiscordWebhook(url, content=message)
             response = webhook.execute()
+            print(message)
         done = True
+        sys.exit()
+    
+    if(event == 'Cancel'):
+        mainWindow.close()
+        sys.exit()
 sys.exit()
