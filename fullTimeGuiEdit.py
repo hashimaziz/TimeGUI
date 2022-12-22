@@ -96,6 +96,7 @@ while(not done):
 
         if(event == "Cancel"):
             tourWin.close()
+            continue
 
     #when the main window is closed it compiles everything from the main window
     #including the date, the students name and any notes about the student
